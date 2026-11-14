@@ -35,7 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         // Sync payloads must round-trip byte for byte (empty notes, leading spaces).
-        $isSync = fn (Request $request) => $request->is('sync/*');
+        $isSync = fn (Request $request) => $request->is('sync/*', 'api/*/sync/*');
         $middleware->trimStrings(except: [$isSync]);
         $middleware->convertEmptyStringsToNull(except: [$isSync]);
 

@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Issues and revokes the bearer tokens of the native apps (routes/api.php). The
@@ -45,8 +46,17 @@ class TokenController extends Controller
         if ($user->two_factor_confirmed_at !== null) {
             $code = $request->string('code')->value();
 
-            $valid = $code !== '' && app(TwoFactorAuthenticationProvider::class)
-                ->verify(decrypt($user->two_factor_secret ?? ''), $code);
+            // A stored secret that is not a valid key (corrupted row) must not 500 the request.
+            $valid = false;
+
+            if ($code !== '') {
+                try {
+                    $valid = app(TwoFactorAuthenticationProvider::class)
+                        ->verify(decrypt($user->two_factor_secret ?? ''), $code);
+                } catch (Throwable) {
+                    $valid = false;
+                }
+            }
 
             if (! $valid) {
                 throw ValidationException::withMessages(['code' => [__('The provided two factor authentication code was invalid.')]]);

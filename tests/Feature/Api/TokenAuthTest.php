@@ -64,7 +64,13 @@ test('token issuing is rate limited to five per minute', function () {
 });
 
 test('an account with confirmed 2FA also needs a code, and a wrong one is refused', function () {
-    User::factory()->withTwoFactor()->create(['email' => 'ada@example.com']);
+    // A valid-length base32 secret, like Fortify stores, so verify() runs and simply says no.
+    User::factory()->create([
+        'email' => 'ada@example.com',
+        'two_factor_secret' => encrypt(str_repeat('A', 32)),
+        'two_factor_recovery_codes' => encrypt(json_encode(['recovery-code-1'])),
+        'two_factor_confirmed_at' => now(),
+    ]);
 
     $this->postJson(route('api.tokens.store'), [
         'email' => 'ada@example.com',
