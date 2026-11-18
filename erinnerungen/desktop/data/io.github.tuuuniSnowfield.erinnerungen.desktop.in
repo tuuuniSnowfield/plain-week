@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Erinnerungen
+Comment=Minimale, private Aufgaben-App – kein Account, keine Cloud, keine Telemetrie
+Exec=erinnerungen
+Icon=io.github.tuuuniSnowfield.erinnerungen
+Terminal=false
+Type=Application
+Categories=Office;Utility;
+Keywords=todo;tasks;reminders;aufgaben;
+StartupNotify=true
+X-GNOME-UsesNotifications=true
