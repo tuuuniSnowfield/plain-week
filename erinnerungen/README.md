@@ -66,6 +66,17 @@ Alternatively provide your own CA bundle (PEM). `http://` is refused
   server or the local folder.
 - SQLite: WAL, foreign keys, parameterized queries only.
 
+## Build (automated)
+
+```sh
+./build.sh           # check + Linux executable + Android APK  -> dist/
+./build.sh check     # only unit tests + lint + prerequisite report
+./build.sh linux     # only dist/linux/  (PyInstaller onedir + launcher, needs python3-gi/GTK4/libadwaita)
+./build.sh android   # only dist/android/erinnerungen-1.0.0.apk (needs JDK 17 + ANDROID_HOME)
+```
+
+On Windows use `build.bat` with the same modes — `linux` is delegated to WSL, `android` runs `gradlew :app:assembleRelease`.
+
 ## Development
 
 ```sh
