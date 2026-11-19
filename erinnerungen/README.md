@@ -69,10 +69,11 @@ Alternatively provide your own CA bundle (PEM). `http://` is refused
 ## Build (automated)
 
 ```sh
-./build.sh           # check + Linux executable + Android APK  -> dist/
+./build.sh           # check + portable + Linux bundle + APK -> dist/ (skips what lacks prerequisites)
 ./build.sh check     # only unit tests + lint + prerequisite report
-./build.sh linux     # only dist/linux/  (PyInstaller onedir + launcher, needs python3-gi/GTK4/libadwaita)
-./build.sh android   # only dist/android/erinnerungen-1.0.0.apk (needs JDK 17 + ANDROID_HOME)
+./build.sh portable  # dist/linux/erinnerungen-1.0.0.pyz — zipapp, runs on any Linux with python3-gi/GTK4
+./build.sh linux     # dist/linux/ PyInstaller onedir bundle + launcher (needs python3-gi/GTK4/libadwaita)
+./build.sh android   # dist/android/erinnerungen-1.0.0.apk (needs JDK 17 + ANDROID_HOME)
 ```
 
 On Windows use `build.bat` with the same modes — `linux` is delegated to WSL, `android` runs `gradlew :app:assembleRelease`.

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Erinnerungen — build script (Linux/macOS shell)
-# Usage: ./build.sh [all|linux|android|check]     (default: all)
-#   check   -> run unit tests + lint, report missing build prerequisites
-#   linux   -> build the Linux executable (PyInstaller onedir) into dist/linux/
-#   android -> build the APK into dist/android/
-#   all     -> check + linux + android
+# Usage: ./build.sh [all|linux|android|portable|check]   (default: all)
+#   check    -> unit tests + lint + prerequisite report
+#   portable -> dist/linux/erinnerungen-1.0.0.pyz (zipapp; runs on any Linux with python3-gi/GTK4)
+#   linux    -> dist/linux/ PyInstaller onedir bundle + launcher (needs python3-gi/GTK4/libadwaita)
+#   android  -> dist/android/erinnerungen-1.0.0.apk (needs JDK 17 + ANDROID_HOME)
+#   all      -> check + portable + linux + android (skips what lacks prerequisites, with warnings)
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$PWD"
@@ -44,11 +45,72 @@ run_checks() {
   fi
 }
 
+build_portable() {
+  need python3 "install Python 3.11+"
+  need pip3 "install pip"
+  log "portable: vendor deps + zipapp"
+  rm -rf desktop/build
+  mkdir -p desktop/build/portable desktop/build/schemas
+  cp -r desktop/erinnerungen desktop/build/portable/
+  python3 -m pip install -q --target desktop/build/portable python-dateutil
+  cp desktop/data/*.gschema.xml desktop/build/schemas/
+  glib-compile-schemas desktop/build/schemas 2>/dev/null \
+    || warn "glib-compile-schemas not found — schemas are bundled as XML and compiled at first start"
+  cp desktop/build/schemas/* desktop/build/portable/ 2>/dev/null || true
+  cat > desktop/build/portable/__main__.py <<'PY'
+import os
+import subprocess
+import sys
+import tempfile
+import zipfile
+
+
+def _ensure_schema_dir():
+    if os.environ.get("GSETTINGS_SCHEMA_DIR"):
+        return
+    arc = os.path.abspath(__file__)
+    while not arc.endswith(".pyz"):
+        arc = os.path.dirname(arc)
+    target = tempfile.mkdtemp(prefix="erinnerungen-schemas-")
+    try:
+        with zipfile.ZipFile(arc) as z:
+            for name in z.namelist():
+                if name.endswith(".gschema.xml") or name.endswith(".gschema.valid"):
+                    z.extract(name, target)
+        if not any(n.endswith(".gschema.valid") for n in os.listdir(target)):
+            subprocess.run(["glib-compile-schemas", target], check=False)
+        os.environ["GSETTINGS_SCHEMA_DIR"] = target
+    except Exception:
+        pass
+
+
+try:
+    import gi  # noqa: F401
+except ImportError:
+    sys.stderr.write(
+        "erinnerungen needs the GNOME stack at runtime.\n"
+        "  Debian/Ubuntu: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 libglib2.0-bin\n"
+        "  Fedora:        sudo dnf install python3-gobject gtk4 libadwaita glib2\n"
+    )
+    raise SystemExit(2)
+
+_ensure_schema_dir()
+from erinnerungen.app import main
+
+raise SystemExit(main())
+PY
+  mkdir -p "$DIST/linux"
+  python3 -m zipapp desktop/build/portable \
+    -o "$DIST/linux/erinnerungen-1.0.0.pyz" -p "/usr/bin/env python3"
+  rm -rf desktop/build
+  log "portable build OK -> $DIST/linux/erinnerungen-1.0.0.pyz  (run: python3 erinnerungen-1.0.0.pyz)"
+}
+
 build_linux() {
   need python3 "install Python 3.11+"
   need pip3 "install pip"
-  python3 -c "import gi" 2>/dev/null || die "python3-gi + GTK4/libadwaita required (see ./build.sh check)"
-  need glib-compile-schemas "install libglib2.0-bin (Debian/Ubuntu) or glib2-devel (Fedora)"
+  python3 -c "import gi" 2>/dev/null || { warn "python3-gi/GTK4/libadwaita missing — skipping linux bundle (use ./build.sh portable instead)"; return 1; }
+  command -v glib-compile-schemas >/dev/null 2>&1 || { warn "glib-compile-schemas missing — skipping linux bundle"; return 1; }
   log "linux: build venv + deps"
   python3 -m venv "$ROOT/.venv-build"
   "$ROOT/.venv-build/bin/pip" install -q python-dateutil pyinstaller
@@ -82,15 +144,17 @@ SH
 }
 
 build_android() {
-  need java "install JDK 17"
-  [ -n "${ANDROID_HOME:-}" ] || die "ANDROID_HOME not set — point it to your Android SDK (compileSdk 35)"
+  command -v java >/dev/null 2>&1 || { warn "java (JDK 17) missing — skipping android build"; return 1; }
+  [ -n "${ANDROID_HOME:-}" ] || { warn "ANDROID_HOME not set — skipping android build"; return 1; }
   cd android
   if [ -x ./gradlew ]; then
     GRADLE=./gradlew
   elif command -v gradle >/dev/null 2>&1; then
     GRADLE=gradle
   else
-    die "neither ./gradlew nor gradle found — run 'gradle wrapper' once on a machine with Gradle to generate the wrapper"
+    warn "neither ./gradlew nor gradle found — skipping android build (run 'gradle wrapper' once to generate the wrapper)"
+    cd "$ROOT"
+    return 1
   fi
   log "android: $GRADLE :app:assembleRelease"
   "$GRADLE" :app:assembleRelease
@@ -101,9 +165,16 @@ build_android() {
 }
 
 case "$MODE" in
-  check)   run_checks ;;
-  linux)   build_linux ;;
-  android) build_android ;;
-  all)     run_checks; build_linux; build_android ;;
-  *)       die "usage: $0 [all|linux|android|check]" ;;
+  check)    run_checks ;;
+  portable) build_portable ;;
+  linux)    build_linux ;;
+  android)  build_android ;;
+  all)
+    run_checks
+    build_portable
+    build_linux || true
+    build_android || true
+    log "done -> artifacts in $DIST/"
+    ;;
+  *)        die "usage: $0 [all|linux|android|portable|check]" ;;
 esac
