@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.tuuuniSnowfield.erinnerungen</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Erinnerungen</name>
+  <summary>Minimale, private Aufgaben-App (Apple-Reminders-Klon)</summary>
+  <description>
+    <p>Listen mit Farbe und Icon, Schnelleingabe mit Datum/Uhrzeit, lokale
+    Benachrichtigungen, wiederkehrende Aufgaben, Subtasks und Notizen.
+    Offline-first mit lokaler SQLite-Datenbank; optionaler Sync über Standard
+    CalDAV (VTODO, RFC 5545) auf deinem eigenen Server (Radicale, Nextcloud,
+    Baïkal) oder als lokaler .ics-Ordner. Kein Account, keine Cloud, keine
+    Telemetrie. HTTPS mit optionalem Zertifikats-Pinning für Heimserver.</p>
+  </description>
+  <launchable type="desktop-id">io.github.tuuuniSnowfield.erinnerungen.desktop</launchable>
+  <sup developer_name="tuuuniSnowfield">
+    <id>io.github.tuuuniSnowfield</id>
+  </sup>
+  <provides>
+    <binary>erinnerungen</binary>
+  </provides>
+  <releases>
+    <release version="1.0.0" date="2026-11-18">
+      <description>
+        <p>Version 1.0.0: GTK4/libadwaita, offline-first SQLite, CalDAV sync,
+        .ics folder mode, TLS pinning, local notifications.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>
